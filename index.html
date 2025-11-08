@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phishing Detection Tool - Search with ML Model</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(-45deg, #a1a1a6, #c0c0c8, #8f8f96, #b5b5bb);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+  }
+  @keyframes gradientBG {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  body {
+    padding-top: 70px; /* reserve space for fixed navbar */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    min-width: 320px;
+    flex-direction: column;
+  }
+  nav {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 60px;
+    max-width: 1000px;
+    width: calc(100% - 20px);
+    background-color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    z-index: 1000;
+  }
+  .logo {
+    position: absolute;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    background-color: #007bff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    user-select: none;
+  }
+  .nav-title {
+    color: #333;
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .search-container {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 0;
+  }
+  form {
+    display: flex;
+    width: 100%;
+    border-radius: 30px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    background-color: #fff;
+  }
+  input[type="search"] {
+    flex-grow: 1;
+    padding: 14px 20px;
+    font-size: 1rem;
+    border: none;
+    outline: none;
+    color: #333;
+    background-color: #fff;
+  }
+  input[type="search"]::placeholder {
+    color: #aaa;
+  }
+  button {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 0 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  button:hover,
+  button:focus {
+    background-color: #0056b3;
+  }
+  button:active {
+    background-color: #004494;
+  }
+  .search-result {
+    margin-top: 20px;
+    max-width: 400px;
+    width: 100%;
+    padding: 12px 20px;
+    background: rgba(255 255 255 / 0.85);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    color: #333;
+    font-size: 1.1rem;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    white-space: pre-wrap;
+  }
+  .search-result:empty {
+    display: none;
+  }
+  @media (max-width: 400px) {
+    nav {
+      height: 50px;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      border-radius: 12px;
+      padding: 0 12px;
+      top: 10px;
+      transform: none;
+    }
+    .logo {
+      width: 36px;
+      height: 36px;
+      font-size: 1rem;
+      left: 12px;
+      position: absolute;
+    }
+    .nav-title {
+      font-size: 1rem;
+    }
+    input[type="search"] {
+      font-size: 1rem;
+      padding: 12px 16px;
+    }
+    button {
+      padding: 0 16px;
+      font-size: 1rem;
+    }
+    .search-container {
+      max-width: 100%;
+    }
+    .search-result {
+      max-width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+  <nav>
+    <div class="logo" aria-label="Logo">PD</div>
+    <div class="nav-title">Phishing Detection Tool</div>
+  </nav>
+
+  <div class="search-container" role="main" aria-label="Search area">
+    <form id="searchForm">
+      <input type="search" id="searchInput" placeholder="Enter URL or text to scan..." aria-label="Search" required />
+      <button type="submit" aria-label="Submit search">
+        &#128269; Scan
+      </button>
+    </form>
+    <div id="searchResult" class="search-result" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script>
+  const form = document.getElementById('searchForm');
+  const searchInput = document.getElementById('searchInput');
+  const searchResult = document.getElementById('searchResult');
+
+  form.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const query = searchInput.value.trim();
+    if (query) {
+      searchResult.textContent = 'Scanning... Please wait.';
+      try {
+        const response = await fetch('http://127.0.0.1:5000/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: query }),
+        });
+
+        const data = await response.json();
+        searchResult.textContent = data.result || 'Error: ' + data.error;
+      } catch (error) {
+        searchResult.textContent = 'Server Error. Try again later.';
+        console.error(error);
+      }
+    } else {
+      searchResult.textContent = '';
+    }
+  });
+</script>    
+</body>
+</html>
